@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Kas Kelas</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 100%;
+            overflow-x: auto;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f2f2f2;
+            position: sticky;
+            top: 0;
+        }
+        .name-cell {
+            position: sticky;
+            left: 0;
+            background: white;
+            z-index: 1;
+        }
+        .total-cell {
+            position: sticky;
+            right: 0;
+            background: white;
+            font-weight: bold;
+        }
+        .payment-status {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin: auto;
+            cursor: pointer;
+        }
+        .paid {
+            background-color: #4CAF50;
+        }
+        .unpaid {
+            background-color: #f44336;
+        }
+        .edit-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: blue;
+            padding: 0 5px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        #grandTotal {
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        .save-btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Aplikasi Kas Kelas</h1>
+        <div id="grandTotal">Total: Rp 0</div>
+    </div>
+    
+    <button onclick="exportToExcel()" class="save-btn">Export ke Excel</button>
+    <button onclick="saveData()" class="save-btn">Simpan Data</button>
+    <button onclick="loadData()" class="save-btn">Muat Data</button>
+
+    <div style="overflow-x: auto;">
+        <table id="kasTable"></table>
+    </div>
+
+    <script>
+        let students = [];
+        let months = [];
+        const PAYMENT_AMOUNT = 10000;
+
+        // Initialize data
+        function initializeData() {
+            students = Array.from({ length: 70 }, (_, i) => ({
+                name: `Siswa ${i + 1}`,
+                payments: Array(20).fill(false)
+            }));
+            months = Array.from({ length: 20 }, (_, i) => `Bulan ${i + 1}`);
+            renderTable();
+        }
+
+        // Render table
+        function renderTable() {
+            const table = document.getElementById('kasTable');
+            table.innerHTML = '';
+
+            // Create header
+            const headerRow = document.createElement('tr');
+            const nameHeader = document.createElement('th');
+            nameHeader.textContent = 'Nama Siswa';
+            nameHeader.className = 'name-cell';
+            headerRow.appendChild(nameHeader);
+
+            months.forEach((month, i) => {
+                const th = document.createElement('th');
+                th.innerHTML = `${month} <button class="edit-btn" onclick="editMonth(${i})">✏️</button>`;
+                headerRow.appendChild(th);
+            });
+
+            const totalHeader = document.createElement('th');
+            totalHeader.textContent = 'Total';
+            totalHeader.className = 'total-cell';
+            headerRow.appendChild(totalHeader);
+
+            table.appendChild(headerRow);
+
+            // Create rows
+            students.forEach((student, studentIndex) => {
+                const row = document.createElement('tr');
+                
+                // Name cell
+                const nameCell = document.createElement('td');
+                nameCell.className = 'name-cell';
+                nameCell.innerHTML = `${student.name} <button class="edit-btn" onclick="editName(${studentIndex})">✏️</button>`;
+                row.appendChild(nameCell);
+
+                // Payment cells
+                student.payments.forEach((paid, monthIndex) => {
+                    const td = document.createElement('td');
+                    const div = document.createElement('div');
+                    div.className = `payment-status ${paid ? 'paid' : 'unpaid'}`;
+                    div.onclick = () => togglePayment(studentIndex, monthIndex);
+                    td.appendChild(div);
+                    row.appendChild(td);
+                });
+
+                // Total cell
+                const totalCell = document.createElement('td');
+                totalCell.className = 'total-cell';
+                totalCell.textContent = `Rp ${(student.payments.filter(Boolean).length * PAYMENT_AMOUNT).toLocaleString()}`;
+                row.appendChild(totalCell);
+
+                table.appendChild(row);
+            });
+
+            updateGrandTotal();
+        }
+
+        // Toggle payment status
+        function togglePayment(studentIndex, monthIndex) {
+            students[studentIndex].payments[monthIndex] = !students[studentIndex].payments[monthIndex];
+            renderTable();
+        }
+
+        // Edit student name
+        function editName(index) {
+            const newName = prompt('Masukkan nama baru:', students[index].name);
+            if (newName) {
+                students[index].name = newName;
+                renderTable();
+            }
+        }
+
+        // Edit month name
+        function editMonth(index) {
+            const newName = prompt('Masukkan nama bulan baru:', months[index]);
+            if (newName) {
+                months[index] = newName;
+                renderTable();
+            }
+        }
+
+        // Update grand total
+        function updateGrandTotal() {
+            const total = students.reduce((sum, student) => 
+                sum + student.payments.filter(Boolean).length * PAYMENT_AMOUNT, 0
+            );
+            document.getElementById('grandTotal').textContent = `Total: Rp ${total.toLocaleString()}`;
+        }
+
+        // Export to Excel
+        function exportToExcel() {
+            let csv = 'Nama Siswa,';
+            csv += months.join(',');
+            csv += ',Total\n';
+
+            students.forEach(student => {
+                csv += `${student.name},`;
+                csv += student.payments.map(paid => paid ? 'Lunas' : 'Belum').join(',');
+                const total = student.payments.filter(Boolean).length * PAYMENT_AMOUNT;
+                csv += `,Rp ${total}\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'kas_kelas.csv';
+            link.click();
+        }
+
+        // Save data to localStorage
+        function saveData() {
+            const data = {
+                students: students,
+                months: months
+            };
+            localStorage.setItem('kasData', JSON.stringify(data));
+            alert('Data berhasil disimpan!');
+        }
+
+        // Load data from localStorage
+        function loadData() {
+            const savedData = localStorage.getItem('kasData');
+            if (savedData) {
+                const data = JSON.parse(savedData);
+                students = data.students;
+                months = data.months;
+                renderTable();
+                alert('Data berhasil dimuat!');
+            } else {
+                alert('Tidak ada data tersimpan!');
+            }
+        }
+
+        // Initialize on load
+        initializeData();
+    </script>
+</body>
+</html>
